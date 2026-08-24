@@ -86,7 +86,7 @@ if st.session_state.report_ready:
         health_tips = "🏃 Perfect day to open windows, ventilate living spaces, or enjoy prolonged outdoor recreational activities."
     elif aqi_val <= 100:
         st.warning("⚠️ Notice: Air quality is currently acceptable but moderate.")
-        health_tips = "🫁 Individuals uniquely sensitive to particle pollution should consider reducing heavy outdoor exertion."
+        health_tips = "🫁 Individuals uniquely sensitive to particle pollution (such as asthma patients) should consider reducing heavy outdoor exertion."
     else:
         st.error("🚨 ALERT: Air quality index has crossed hazardous tracking limits!")
         health_tips = "😷 High health risks present. Highly recommended to wear an N95 mask outside and run air purifiers."
@@ -105,6 +105,13 @@ if st.session_state.report_ready:
         [40.7128, -74.0060, 42], [34.0522, -118.2437, 65], [51.5074, -0.1278, 35],
         [35.6762, 139.6503, 25], [28.6139, 77.2090, 185], [st.session_state.lat_val, st.session_state.lon_val, aqi_val]
     ]
-    folium_map = folium.Map(location=[st.session_state.lat_val, st.session_state.lon_val], zoom_start=2, tiles="OpenStreetMap")
+    
+    # FIX: Switched to CartoDB Positron to bypass proxy network blocks completely
+    folium_map = folium.Map(
+        location=[st.session_state.lat_val, st.session_state.lon_val], 
+        zoom_start=2, 
+        tiles="CartoDB Positron"
+    )
+    
     HeatMap(heatmap_list, radius=25, blur=15, min_opacity=0.4).add_to(folium_map)
     st_folium(folium_map, width=700, height=450)
