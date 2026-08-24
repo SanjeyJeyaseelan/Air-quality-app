@@ -1,55 +1,43 @@
-import urllib.parse
 import requests
 import streamlit as st
 
-# 1. App Title and UI Elements
+# 1. Page Configuration
 st.title("🌍 Live Air Quality Monitor")
-st.write("Check the real-time air quality index (AQI) for any city.")
+st.write("Powered by the World Air Quality Index (WAQI) Engine.")
 
-# Creates a text entry box that defaults to New York
-city_name = st.text_input("Enter a city name:", "New York")
+# 2. Input Boxes for User
+# Paste your token between the quotes below
+WAQI_TOKEN = st.text_input("Enter your WAQI API Token:", type="password")
+city_name = st.text_input("Enter a city name (e.g., Tokyo, London, Paris):", "New York")
 
-# 2. Add the browser identity header that works on your iPad
-headers = {
-    'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
-}
-
-# 3. Clean up the city name string for web addresses
-safe_city = urllib.parse.quote(city_name)
-
-# 4. Use the correct endpoints specified by the API documentation
-geo_url = f"https://open-meteo.com{safe_city}&count=1&language=en&format=json"
-
-# Run code when the user clicks the button
-if st.button("Check Air Quality"):
-    geo_response = requests.get(geo_url, headers=headers)
-    
-    if geo_response.status_code == 200:
-        geo_data = geo_response.json()
-        
-        if "results" in geo_data and len(geo_data["results"]) > 0:
-            # FIX: Adding [0] safely selects the absolute first matching city array item
-            first_city = geo_data["results"][0]
-            lat = first_city["latitude"]
-            lon = first_city["longitude"]
-            
-            # 5. Fetch matching air quality data
-            aqi_url = f"https://open-meteo.com{lat}&longitude={lon}&current=us_aqi"
-            aqi_response = requests.get(aqi_url, headers=headers).json()
-            current_aqi = aqi_response["current"]["us_aqi"]
-            
-            # 6. Streamlit Visual Outputs 
-            st.metric(label=f"Current US AQI in {city_name}", value=current_aqi)
-            
-            # Threshold Alerts
-            if current_aqi > 100:
-                st.error("🚨 ALERT: Air quality is unhealthy! Avoid prolonged outdoor activity.")
-            elif current_aqi > 50:
-                st.warning("⚠️ Notice: Air quality is moderate.")
-            else:
-                st.success("✅ Clean Air: Air quality is good today!")
-                
-        else:
-            st.error(f"Could not find any city named '{city_name}'. Check your spelling!")
+# 3. Main Logic Button
+if st.button("Fetch Real-Time AQI"):
+    if not WAQI_TOKEN:
+        st.warning("⚠️ Please provide a valid WAQI API token to pull data.")
     else:
-        st.error(f"Could not connect to the location service. (Status Code: {geo_response.status_code})")
+        # Build a direct city-search link
+        url = f"https://waqi.info{city_name}/?token={WAQI_TOKEN}"
+        
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # WAQI sends back a simple 'status' check string
+            if data.get("status") == "ok":
+                # Isolate the exact core metric directory
+                aqi_value = data["data"]["aqi"]
+                st.metric(label=f"Current US AQI in {city_name.title()}", value=aqi_value)
+                
+                # Dynamic Alert Banners
+                if aqi_value <= 50:
+                    st.success("✅ Clean Air: Air quality is excellent.")
+                elif aqi_value <= 100:
+                    st.warning("⚠️ Notice: Air quality is moderate.")
+                else:
+                    st.error("🚨 ALERT: Air quality is unhealthy! Avoid prolonged outdoor activity.")
+                    
+            else:
+                st.error(f"Could not find data for '{city_name}'. Try typing a larger city near you.")
+        else:
+            st.error(f"API Connection Failed (Error Code: {response.status_code})")
