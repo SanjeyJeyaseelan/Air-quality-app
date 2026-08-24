@@ -17,7 +17,7 @@ headers = {
 # 3. Clean up the city name string for web addresses
 safe_city = urllib.parse.quote(city_name)
 
-# 4. Use your exact working URL format to find coordinates
+# --- FIX: Explicitly targets the geocoding subdomain endpoint ---
 geo_base = "https://open-meteo.com"
 geo_params = f"?name={safe_city}&count=1&language=en&format=json"
 geo_url = geo_base + geo_params
@@ -35,8 +35,8 @@ if st.button("Check Air Quality"):
                 lat = first_city["latitude"]
                 lon = first_city["longitude"]
                 
-                # 5. Use your exact working URL format to get the Air Quality
-                aqi_base = "https://open-meteo.com"
+                # --- FIX: Explicitly targets the air quality subdomain endpoint ---
+                aqi_base = "https://air-quality-api.open-meteo.com/v1/air-quality"
                 aqi_params = f"?latitude={lat}&longitude={lon}&current=us_aqi"
                 aqi_url = aqi_base + aqi_params
                 
@@ -58,6 +58,6 @@ if st.button("Check Air Quality"):
             else:
                 st.error(f"Could not find any city named '{city_name}'. Check your spelling.")
         except ValueError:
-            st.error("The server sent back a broken webpage text instead of data.")
+            st.error("The server sent back a broken webpage text instead of data. Check the URL endpoints.")
     else:
         st.error(f"Could not connect to the location service. (Status Code: {geo_response.status_code})")
