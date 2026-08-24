@@ -4,7 +4,6 @@ import requests
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
-from folium.plugins import HeatMap
 
 st.title("🌍 Advanced Live Air Quality Analytics Dashboard")
 st.write("An independent data science application tracking global atmospheric metrics and regional health indices.")
@@ -18,7 +17,6 @@ FALLBACK_DATA = {
     "tokyo": {"aqi": 22, "station": "Shinjuku Urban Air Profiler", "lat": 35.6762, "lon": 139.6503}
 }
 
-# Initialize session state so data persists
 if "report_ready" not in st.session_state:
     st.session_state.report_ready = False
     st.session_state.aqi_value = 42
@@ -71,7 +69,6 @@ if st.button("Generate Air Quality Report"):
         
     st.session_state.report_ready = True
 
-# Display persistent results if report is ready
 if st.session_state.report_ready:
     aqi_val = st.session_state.aqi_value
     st.markdown("---")
@@ -82,14 +79,14 @@ if st.session_state.report_ready:
         st.info("ℹ️ Portfolio System Update: Displaying verified stable dataset matrices.")
 
     if aqi_val <= 50:
-        st.success("✅ Clean Air: General air pollution risks are minimal today.")
-        health_tips = "🏃 Perfect day to open windows, ventilate living spaces, or enjoy prolonged outdoor recreational activities."
+        st.success("General air pollution risks are minimal today.")
+        health_tips = "Perfect day to open windows, enjoy outdoor activities, and exercise outside."
     elif aqi_val <= 100:
-        st.warning("⚠️ Notice: Air quality is currently acceptable but moderate.")
-        health_tips = "🫁 Individuals uniquely sensitive to particle pollution (such as asthma patients) should consider reducing heavy outdoor exertion."
+        st.warning("Notice: Air quality is currently acceptable but moderate.")
+        health_tips = "Individuals uniquely sensitive to particle pollution should consider reducing heavy outdoor exertion."
     else:
-        st.error("🚨 ALERT: Air quality index has crossed hazardous tracking limits!")
-        health_tips = "😷 High health risks present. Highly recommended to wear an N95 mask outside and run air purifiers."
+        st.error("ALERT: Air quality index has crossed hazardous tracking limits!")
+        health_tips = "High health risks present. Highly recommended to wear an N95 mask outside and run indoor air purifiers."
         
     st.subheader("📋 Public Health & Safety Guidance")
     st.info(health_tips)
@@ -100,18 +97,48 @@ if st.session_state.report_ready:
     chart_df = pd.DataFrame(hist_calc, index=["6D", "5D", "4D", "3D", "2D", "Yest", "Today"], columns=["AQI"])
     st.line_chart(chart_df)
     
-    st.subheader("🗺️ Global Atmospheric Density Heatmap Tracker")
-    heatmap_list = [
-        [40.7128, -74.0060, 42], [34.0522, -118.2437, 65], [51.5074, -0.1278, 35],
-        [35.6762, 139.6503, 25], [28.6139, 77.2090, 185], [st.session_state.lat_val, st.session_state.lon_val, aqi_val]
-    ]
+    # -------------------------------------------------------------------------
+    # NEW CHOROPLETH IMPLEMENTATION: SHADES WHOLE COUNTRIES LIKE THE AQLI MAP
+    # -------------------------------------------------------------------------
+    st.subheader("🗺️ Country-Level Air Quality Index (Choropleth Map)")
     
-    # FIX: Switched to CartoDB Positron to bypass proxy network blocks completely
-    folium_map = folium.Map(
-        location=[st.session_state.lat_val, st.session_state.lon_val], 
-        zoom_start=2, 
-        tiles="CartoDB Positron"
-    )
+    # Free, open-source dataset containing the geographic border geometry files for every country
+    geojson_url = "https://githubusercontent.com"
     
-    HeatMap(heatmap_list, radius=25, blur=15, min_opacity=0.4).add_to(folium_map)
+    # Build a DataFrame mapping full country names to average index weights
+    # This populates the colors globally to replicate the University of Chicago dataset layout
+    country_pollution_data = pd.DataFrame([
+        {"Country": "United States of America", "AQI": 38},
+        {"Country": "Canada", "AQI": 15},
+        {"Country": "United Kingdom", "AQI": 32},
+        {"Country": "France", "AQI": 48},
+        {"Country": "Germany", "AQI": 44},
+        {"Country": "Italy", "AQI": 55},
+        {"Country": "Japan", "AQI": 22},
+        {"Country": "China", "AQI": 115},  # Deeper Orange/Red
+        {"Country": "India", "AQI": 182},  # Dark Crimson (High Pollution)
+        {"Country": "Egypt", "AQI": 134},  # Orange/Red
+        {"Country": "Brazil", "AQI": 52},   # Soft Light Yellow
+        {"Country": "Australia", "AQI": 18},
+        {"Country": "Democratic Republic of the Congo", "AQI": 145} # Deep Red
+    ])
+    
+    # Initialize your light canvas layout
+    folium_map = folium.Map(location=[20.0, 0.0], zoom_start=1, tiles="CartoDB Positron")
+    
+    # Build the country-shading choropleth module layer
+    folium.Choropleth(
+        geo_data=geojson_url,
+        name="choropleth",
+        data=country_pollution_data,
+        columns=["Country", "AQI"],
+        key_on="feature.properties.name", # Tells Folium to link table country names to map borders
+        fill_color="YlOrRd",             # "Yellow-Orange-Red" color palette layout to match your image!
+        fill_opacity=0.7,
+        line_opacity=0.4,
+        legend_name="Air Quality Index Level (AQI)",
+        nan_fill_color="white"           # Unlisted countries default to clean white backgrounds
+    ).add_to(folium_map)
+    
+    # Render the choropleth map container directly onto the webpage layout
     st_folium(folium_map, width=700, height=450)
