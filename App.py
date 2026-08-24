@@ -18,12 +18,14 @@ else:
         try:
             # Clean search queries to match structural parsing rules
             cleaned_city = city_input.strip().lower()
-            api_safe_city = cleaned_city.replace(" ", "").replace(",", "").replace(".", "")
+            
+            # FIX: Replaces spaces with a hyphen (turning "New York" into "new-york") which matches the WAQI feed naming standard
+            api_safe_city = cleaned_city.replace(" ", "-").replace(",", "").replace(".", "")
             
             # Fetch and clean the backend token setting
             token = st.secrets["waqi_token"].strip().strip('"').strip("'")
             
-            # FIX: Explicitly separates the domain host from the city path parameters using individual variables
+            # Build clean query links
             api_host = "http://waqi.info"
             api_path = f"/feed/{api_safe_city}/"
             api_query = f"?token={token}"
@@ -88,13 +90,13 @@ else:
                         st.subheader("🗺️ Geo-Spatial Station Tracking Map")
                         
                         mapping_coordinates = pd.DataFrame({
-                            'lat': [float(geo_coordinates[0])],
-                            'lon': [float(geo_coordinates[1])]
+                            'lat': [float(geo_coordinates)],
+                            'lon': [float(geo_coordinates)]
                         })
                         st.map(mapping_coordinates)
                         
                 else:
-                    st.error(f"Could not locate station profiles under '{city_input}'. Please check spelling or query a larger regional hub.")
+                    st.error(f"Could not locate station profiles under '{city_input}'. Please try a major global capital city name (e.g., 'london', 'tokyo', 'los-angeles').")
             else:
                 st.error(f"Network processing failed with data server status: {response.status_code}")
                 
