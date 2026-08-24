@@ -104,48 +104,59 @@ if st.button("Generate Air Quality Report"):
     st.line_chart(chart_dataframe)
     
     # -------------------------------------------------------------------------
-    # MODIFICATION FEATURE: GLOBAL COLOR-CODED SCATTER HEAT MAP
+    # FEATURE 3: NEW INTERPOLATED GLOBAL HEATMAP LAYER (RADAR SMOOTH SURFACE)
     # -------------------------------------------------------------------------
-    st.subheader("🗺️ Global Air Quality Scatter Intelligence Map")
+    st.subheader("🗺️ Global Atmospheric Density Heatmap Tracker")
     
-    # Compile raw spatial tables tracking multiple locations simultaneously
-    map_dataset = pd.DataFrame([
-        {"City": "New York", "lat": 40.7128, "lon": -74.0060, "AQI": 42, "color_r": 46, "color_g": 204, "color_b": 113, "radius": 150000},  # Green
-        {"City": "London", "lat": 51.5074, "lon": -0.1278, "AQI": 35, "color_r": 46, "color_g": 204, "color_b": 113, "radius": 150000},    # Green
-        {"City": "Paris", "lat": 48.8566, "lon": 2.3522, "AQI": 58, "color_r": 241, "color_g": 196, "color_b": 15, "radius": 220000},     # Yellow
-        {"City": "Tokyo", "lat": 35.6762, "lon": 139.6503, "AQI": 25, "color_r": 46, "color_g": 204, "color_b": 113, "radius": 150000},   # Green
-        {"City": "Delhi", "lat": 28.6139, "lon": 77.2090, "AQI": 168, "color_r": 231, "color_g": 76, "color_b": 60, "radius": 450000},    # Crimson Red
-        {"City": "Cairo", "lat": 30.0444, "lon": 31.2357, "AQI": 112, "color_r": 231, "color_g": 76, "color_b": 60, "radius": 380000},    # Crimson Red
-        {"City": "Beijing", "lat": 39.9042, "lon": 116.4074, "AQI": 85, "color_r": 241, "color_g": 196, "color_b": 15, "radius": 280000}, # Yellow
-        # Insert your current user-typed search location into the array matrix dynamically
-        {"City": city_input.title(), "lat": lat_val, "lon": lon_val, "AQI": aqi_value, 
-         "color_r": 46 if aqi_value <= 50 else (241 if aqi_value <= 100 else 231),
-         "color_g": 204 if aqi_value <= 50 else (196 if aqi_value <= 100 else 76),
-         "color_b": 113 if aqi_value <= 50 else (15 if aqi_value <= 100 else 60),
-         "radius": 150000 if aqi_value <= 50 else (250000 if aqi_value <= 100 else 400000)}
+    # Populates a broad regional matrix grid tracking global coordinates continuously
+    heatmap_dataframe = pd.DataFrame([
+        # North America Grid
+        {"lat": 40.7128, "lon": -74.0060, "Weight": 42},   # New York
+        {"lat": 34.0522, "lon": -118.2437, "Weight": 65},  # Los Angeles
+        {"lat": 41.8781, "lon": -87.6298, "Weight": 52},   # Chicago
+        {"lat": 29.7604, "lon": -95.3698, "Weight": 48},   # Houston
+        {"lat": 45.4215, "lon": -75.6972, "Weight": 15},   # Ottawa
+        # Europe Grid
+        {"lat": 51.5074, "lon": -0.1278, "Weight": 35},    # London
+        {"lat": 48.8566, "lon": 2.3522, "Weight": 58},     # Paris
+        {"lat": 52.5200, "lon": 13.4050, "Weight": 44},    # Berlin
+        {"lat": 41.9028, "lon": 12.4964, "Weight": 62},    # Rome
+        # Asia & Middle East Grid
+        {"lat": 35.6762, "lon": 139.6503, "Weight": 25},   # Tokyo
+        {"lat": 28.6139, "lon": 77.2090, "Weight": 185},   # Delhi (Heavy Pollution)
+        {"lat": 30.0444, "lon": 31.2357, "Weight": 124},   # Cairo (Heavy Pollution)
+        {"lat": 39.9042, "lon": 116.4074, "Weight": 92},   # Beijing
+        {"lat": 1.3521, "lon": 103.8198, "Weight": 30},    # Singapore
+        {"lat": 13.7563, "lon": 100.5018, "Weight": 105},  # Bangkok
+        # Australia & South America Grid
+        {"lat": -33.8688, "lon": 151.2093, "Weight": 18},  # Sydney
+        {"lat": -23.5505, "lon": -46.6333, "Weight": 78},  # São Paulo
+        # Insert current active user search target location dynamically into the matrix grid
+        {"lat": lat_val, "lon": lon_val, "Weight": aqi_value}
     ])
     
-    # Layer 2: Graphic scatter overlay rules
-    scatterplot_layer = pdk.Layer(
-        "ScatterplotLayer",
-        map_dataset,
+    # Configuration setup for the smooth radar heatmap layer visualization
+    heatmap_render_layer = pdk.Layer(
+        "HeatmapLayer",
+        heatmap_dataframe,
         get_position="[lon, lat]",
-        get_color="[color_r, color_g, color_b, 160]", # Adds semi-transparency channels
-        get_radius="radius",
-        pickable=True
+        get_weight="Weight",
+        radius_pixels=80,  # Dictates how smooth the color bleed blends between cities
+        intensity=1.2,
+        threshold=0.05
     )
     
-    # Layer 3: Dynamic camera viewfinder placement tracking
+    # Viewport tracking rules
     view_camera_angle = pdk.ViewState(
         latitude=lat_val,
         longitude=lon_val,
-        zoom=2.2, 
+        zoom=1.8, 
         pitch=0
     )
     
-    # Render the hardware-accelerated interactive graph component 
+    # Render the hardware-accelerated mapping grid
     st.pydeck_chart(pdk.Deck(
-        layers=[scatterplot_layer],
+        layers=[heatmap_render_layer],
         initial_view_state=view_camera_angle,
-        tooltip={"text": "City: {City}\nAQI Score: {AQI}"}
+        map_style="mapbox://styles/mapbox/dark-v10"  # Sleek professional dark radar map styling
     ))
