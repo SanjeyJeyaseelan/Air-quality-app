@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
-import pydeck as pdk
 import requests
 import streamlit as st
+from streamlit_folium import st_folium
+import folium
+from folium.plugins import HeatMap
 
 # 1. Page Configuration & Layout Styling
 st.title("🌍 Advanced Live Air Quality Analytics Dashboard")
@@ -38,7 +40,7 @@ if st.button("Generate Air Quality Report"):
                 search_data = response.json()
                 
                 if search_data.get("status") == "ok" and len(search_data.get("data", [])) > 0:
-                    best_match = search_data["data"][0]
+                    best_match = search_data["data"]
                     station_name = best_match["station"]["name"]
                     geo_coordinates = best_match["station"]["geo"]
                     
@@ -52,8 +54,8 @@ if st.button("Generate Air Quality Report"):
                     st.caption(f"📍 Authorized Reporting Station: {station_name}")
                     
                     if len(geo_coordinates) >= 2:
-                        lat_val = float(geo_coordinates[0])
-                        lon_val = float(geo_coordinates[1])
+                        lat_val = float(geo_coordinates)
+                        lon_val = float(geo_coordinates)
                     else:
                         lat_val, lon_val = 40.7128, -74.0060
                         
@@ -104,59 +106,41 @@ if st.button("Generate Air Quality Report"):
     st.line_chart(chart_dataframe)
     
     # -------------------------------------------------------------------------
-    # FEATURE 3: NEW INTERPOLATED GLOBAL HEATMAP LAYER (RADAR SMOOTH SURFACE)
+    # FEATURE 3: DYNAMIC OPEN-SOURCE FOLIUM WORLD HEATMAP (NO TOKEN REQUIRED)
     # -------------------------------------------------------------------------
     st.subheader("🗺️ Global Atmospheric Density Heatmap Tracker")
     
-    # Populates a broad regional matrix grid tracking global coordinates continuously
-    heatmap_dataframe = pd.DataFrame([
-        # North America Grid
-        {"lat": 40.7128, "lon": -74.0060, "Weight": 42},   # New York
-        {"lat": 34.0522, "lon": -118.2437, "Weight": 65},  # Los Angeles
-        {"lat": 41.8781, "lon": -87.6298, "Weight": 52},   # Chicago
-        {"lat": 29.7604, "lon": -95.3698, "Weight": 48},   # Houston
-        {"lat": 45.4215, "lon": -75.6972, "Weight": 15},   # Ottawa
-        # Europe Grid
-        {"lat": 51.5074, "lon": -0.1278, "Weight": 35},    # London
-        {"lat": 48.8566, "lon": 2.3522, "Weight": 58},     # Paris
-        {"lat": 52.5200, "lon": 13.4050, "Weight": 44},    # Berlin
-        {"lat": 41.9028, "lon": 12.4964, "Weight": 62},    # Rome
-        # Asia & Middle East Grid
-        {"lat": 35.6762, "lon": 139.6503, "Weight": 25},   # Tokyo
-        {"lat": 28.6139, "lon": 77.2090, "Weight": 185},   # Delhi (Heavy Pollution)
-        {"lat": 30.0444, "lon": 31.2357, "Weight": 124},   # Cairo (Heavy Pollution)
-        {"lat": 39.9042, "lon": 116.4074, "Weight": 92},   # Beijing
-        {"lat": 1.3521, "lon": 103.8198, "Weight": 30},    # Singapore
-        {"lat": 13.7563, "lon": 100.5018, "Weight": 105},  # Bangkok
-        # Australia & South America Grid
-        {"lat": -33.8688, "lon": 151.2093, "Weight": 18},  # Sydney
-        {"lat": -23.5505, "lon": -46.6333, "Weight": 78},  # São Paulo
-        # Insert current active user search target location dynamically into the matrix grid
-        {"lat": lat_val, "lon": lon_val, "Weight": aqi_value}
-    ])
+    # Generate list matrix tracking coordinates and weight intensity values
+    heatmap_raw_list = [
+        # North America
+        [40.7128, -74.0060, 42],   # New York
+        [34.0522, -118.2437, 65],  # Los Angeles
+        [41.8781, -87.6298, 52],   # Chicago
+        [29.7604, -95.3698, 48],   # Houston
+        [45.4215, -75.6972, 15],   # Ottawa
+        # Europe
+        [51.5074, -0.1278, 35],    # London
+        [48.8566, -2.3522, 58],    # Paris
+        [52.5200, 13.4050, 44],    # Berlin
+        [41.9028, 12.4964, 62],    # Rome
+        # Asia & Middle East
+        [35.6762, 139.6503, 25],   # Tokyo
+        [28.6139, 77.2090, 185],   # Delhi
+        [30.0444, 31.2357, 124],   # Cairo
+        [39.9042, 116.4074, 92],   # Beijing
+        [1.3521, 103.8198, 30],    # Singapore
+        # Australia & South America
+        [-33.8688, 151.2093, 18],  # Sydney
+        [-23.5505, -46.6333, 78],  # São Paulo
+        # Dynamically inject current active user entry city location points
+        [lat_val, lon_val, aqi_value]
+    ]
     
-    # Configuration setup for the smooth radar heatmap layer visualization
-    heatmap_render_layer = pdk.Layer(
-        "HeatmapLayer",
-        heatmap_dataframe,
-        get_position="[lon, lat]",
-        get_weight="Weight",
-        radius_pixels=80,  # Dictates how smooth the color bleed blends between cities
-        intensity=1.2,
-        threshold=0.05
-    )
+    # Initialize Folium baseline canvas centered over your user input search city position
+    folium_map = folium.Map(location=[lat_val, lon_val], zoom_start=2, tiles="OpenStreetMap")
     
-    # Viewport tracking rules
-    view_camera_angle = pdk.ViewState(
-        latitude=lat_val,
-        longitude=lon_val,
-        zoom=1.8, 
-        pitch=0
-    )
+    # Generate a beautiful glowing radar bleed layout matrix across continents
+    HeatMap(heatmap_raw_list, radius=25, blur=15, min_opacity=0.4).add_to(folium_map)
     
-    # Render the hardware-accelerated mapping grid
-    st.pydeck_chart(pdk.Deck(
-        layers=[heatmap_render_layer],
-        initial_view_state=view_camera_angle,
-        map_style="mapbox://styles/mapbox/dark-v10"  # Sleek professional dark radar map styling
-    ))
+    # Render the final interactive map frame component straight onto your webpage
+    st_folium(folium_map, width=700, height=450)
