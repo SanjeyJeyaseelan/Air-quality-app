@@ -1,4 +1,3 @@
-import urllib.parse
 import requests
 import streamlit as st
 
@@ -6,7 +5,7 @@ import streamlit as st
 st.title("🌍 Live Air Quality Monitor")
 st.write("Check real-time air quality index (AQI) values instantly.")
 
-# Clean user input box
+# Create a clean text entry box for your users
 city_input = st.text_input("Enter a city name:", "New York")
 
 # 2. Safety Check: Verify that the Streamlit secret token exists
@@ -16,31 +15,32 @@ if "waqi_token" not in st.secrets:
 else:
     if st.button("Fetch Real-Time AQI"):
         try:
-            # Clean and strip any accidental whitespace from user inputs
-            cleaned_city = city_input.strip()
-            safe_city = urllib.parse.quote(cleaned_city)
+            # Clean up the typing format to match the WAQI database layout requirements
+            cleaned_city = city_input.strip().lower()
             
-            # Fetch the raw token string safely out of hidden server settings
-            raw_token = st.secrets["waqi_token"]
-            cleaned_token = str(raw_token).strip().strip('"').strip("'")
+            # FIX: Replaces standard spaces with a hyphen (e.g., "New York" becomes "new-york")
+            api_safe_city = cleaned_city.replace(" ", "-")
             
-            # Build the request URL explicitly with safe components
-            base_url = "https://api.waqi.info"
-            endpoint = f"/feed/{safe_city}/"
-            query_string = f"?token={cleaned_token}"
-            full_url = base_url + endpoint + query_string
+            # Fetch the secret token safely out of hidden server settings
+            token = st.secrets["waqi_token"].strip().strip('"').strip("'")
             
-            # Use an explicit timeout window to prevent proxy drop disconnects
-            response = requests.get(full_url, timeout=10)
+            # Build the clean target address
+            url = f"https://waqi.info{api_safe_city}/?token={token}"
+            
+            # Fetch the data with a connection timeout protection rule
+            response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 
+                # Check if the API successfully found data for the city
                 if data.get("status") == "ok":
                     aqi_value = data["data"]["aqi"]
+                    station_name = data["data"]["city"]["name"]
                     
-                    # Renders metric visualization right on your web application
-                    st.metric(label=f"Current AQI in {cleaned_city.title()}", value=aqi_value)
+                    # Renders beautiful metric numbers right on your webpage interface
+                    st.metric(label=f"Current AQI in {city_input.title()}", value=aqi_value)
+                    st.caption(f"📍 Reporting Station: {station_name}")
                     
                     # Threshold Alerts
                     if aqi_value <= 50:
@@ -50,13 +50,13 @@ else:
                     else:
                         st.error("🚨 ALERT: Air quality is unhealthy! Avoid prolonged outdoor activity.")
                 else:
-                    st.error(f"Could not find data for '{cleaned_city}'. Check your spelling or try a larger city.")
+                    st.error(f"Could not find data for '{city_input}'. Check your spelling or try searching for a major capital city nearby.")
             else:
-                st.error(f"The weather database responded with an error page. (Status Code: {response.status_code})")
+                st.error(f"The weather database responded with an error code: {response.status_code}")
                 
         except requests.exceptions.Timeout:
-            st.error("⏰ Connection Timeout: The remote data server took too long to answer. Try clicking the button again.")
+            st.error("⏰ Connection Timeout: The data server took too long to answer. Try clicking the button again.")
         except requests.exceptions.ConnectionError:
-            st.error("🌐 Network Connection Error: The Streamlit cloud platform failed to reach the database API server. Please retry.")
+            st.error("🌐 Network Connection Error: The platform failed to reach the database API server.")
         except Exception as e:
-            st.error(f"An unexpected data layout error occurred: {e}")
+            st.error(f"An unexpected tracking error occurred: {e}")
