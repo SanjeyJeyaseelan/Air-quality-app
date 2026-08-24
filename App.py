@@ -17,7 +17,11 @@ else:
     if st.button("Generate Air Quality Report"):
         try:
             # Clean search queries to match structural parsing rules
-            cleaned_city = city_input.strip().lower().replace(" ", "")
+            cleaned_city = city_input.strip().lower()
+            
+            # FIX: Properly defines api_safe_city by removing spaces and punctuation
+            api_safe_city = cleaned_city.replace(" ", "").replace(",", "").replace(".", "")
+            
             token = st.secrets["waqi_token"].strip().strip('"').strip("'")
             
             # Establish HTTP connection logic
