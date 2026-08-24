@@ -18,16 +18,19 @@ else:
         try:
             # Clean search queries to match structural parsing rules
             cleaned_city = city_input.strip().lower()
-            
-            # FIX: Properly defines api_safe_city by removing spaces and punctuation
             api_safe_city = cleaned_city.replace(" ", "").replace(",", "").replace(".", "")
             
+            # Fetch and clean the backend token setting
             token = st.secrets["waqi_token"].strip().strip('"').strip("'")
             
-            # Establish HTTP connection logic
-            url = f"http://waqi.info{api_safe_city}/?token={token}"
+            # FIX: Explicitly separates the domain host from the city path parameters using individual variables
+            api_host = "http://waqi.info"
+            api_path = f"/feed/{api_safe_city}/"
+            api_query = f"?token={token}"
+            full_url = api_host + api_path + api_query
+            
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers, timeout=15)
+            response = requests.get(full_url, headers=headers, timeout=15)
             
             if response.status_code == 200:
                 data = response.json()
@@ -84,7 +87,6 @@ else:
                     if len(geo_coordinates) >= 2:
                         st.subheader("🗺️ Geo-Spatial Station Tracking Map")
                         
-                        # Pack geographic float items into a data table structure for Streamlit map modules
                         mapping_coordinates = pd.DataFrame({
                             'lat': [float(geo_coordinates[0])],
                             'lon': [float(geo_coordinates[1])]
