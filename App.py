@@ -3,41 +3,40 @@ import streamlit as st
 
 # 1. Page Configuration
 st.title("🌍 Live Air Quality Monitor")
-st.write("Powered by the World Air Quality Index (WAQI) Engine.")
+st.write("Check real-time air quality index (AQI) values instantly.")
 
-# 2. Input Boxes for User
-# Paste your token between the quotes below
-WAQI_TOKEN = st.text_input("Enter your WAQI API Token:", type="password")
-city_name = st.text_input("Enter a city name (e.g., Tokyo, London, Paris):", "New York")
+# Clean user input box
+city_name = st.text_input("Enter a city name:", "New York")
 
-# 3. Main Logic Button
 if st.button("Fetch Real-Time AQI"):
-    if not WAQI_TOKEN:
-        st.warning("⚠️ Please provide a valid WAQI API token to pull data.")
-    else:
-        # Build a direct city-search link
-        url = f"https://waqi.info{city_name}/?token={WAQI_TOKEN}"
+    try:
+        # Pulls the secret token automatically from the backend
+        WAQI_TOKEN = st.secrets["waqi_token"]
         
+        # Connect directly to the WAQI feed URL
+        url = f"https://waqi.info{city_name}/?token={WAQI_TOKEN}"
         response = requests.get(url)
         
         if response.status_code == 200:
             data = response.json()
             
-            # WAQI sends back a simple 'status' check string
             if data.get("status") == "ok":
-                # Isolate the exact core metric directory
                 aqi_value = data["data"]["aqi"]
-                st.metric(label=f"Current US AQI in {city_name.title()}", value=aqi_value)
                 
-                # Dynamic Alert Banners
+                # Visual Dashboard Metrics
+                st.metric(label=f"Current AQI in {city_name.title()}", value=aqi_value)
+                
+                # Threshold Alerts
                 if aqi_value <= 50:
-                    st.success("✅ Clean Air: Air quality is excellent.")
+                    st.success("✅ Clean Air: Air quality is excellent today.")
                 elif aqi_value <= 100:
                     st.warning("⚠️ Notice: Air quality is moderate.")
                 else:
                     st.error("🚨 ALERT: Air quality is unhealthy! Avoid prolonged outdoor activity.")
-                    
             else:
-                st.error(f"Could not find data for '{city_name}'. Try typing a larger city near you.")
+                st.error(f"Could not find data for '{city_name}'. Check your spelling or try a larger city.")
         else:
-            st.error(f"API Connection Failed (Error Code: {response.status_code})")
+            st.error("Could not connect to the weather service data feed.")
+            
+    except KeyError:
+        st.error("Developer Setup Error: The API secret key has not been added to Streamlit settings yet.")
